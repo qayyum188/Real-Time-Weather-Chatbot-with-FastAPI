@@ -1,0 +1,256 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- Weather Search Card -->
+    <div class="col-md-5 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h1 class="card-title text-center mb-4">Realtime Weather APP</h1>
+                <h5 class="text-center text-muted mb-4">Created by Abdul Qayyum</h5>
+                <form action="/weather/" method="get" class="mt-4" onsubmit="redirectToWeather(event)">
+                    <div class="mb-3">
+                        <label for="city" class="form-label">Enter City Name:</label>
+                        <input type="text" class="form-control" id="city" name="city" required 
+                               placeholder="Enter city name (e.g., London, New York, Tokyo)">
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">Get Weather</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Card -->
+    <div class="col-md-7 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-2">AI Weather Assistant</h2>
+                <p class="text-center text-muted mb-4">Powered by OpenAI GPT</p>
+                
+                <div id="chat-messages" class="chat-container mb-3">
+                    <!-- Welcome message will be added here by JS -->
+                </div>
+
+                <div class="input-group mb-3">
+                    <input type="text" id="chat-input" class="form-control" 
+                           placeholder="Type your message here..."
+                           aria-label="Type your message">
+                    <button class="btn btn-primary" type="button" onclick="sendMessage()">
+                        <i class="bi bi-send"></i> Send
+                    </button>
+                </div>
+
+                <div class="suggestion-chips mb-3">
+                    <button class="chip" onclick="useExample('How\'s the weather in London?')">Weather in London</button>
+                    <button class="chip" onclick="useExample('Temperature in Tokyo')">Temperature in Tokyo</button>
+                    <button class="chip" onclick="useExample('Is it raining in New York?')">Rain in New York</button>
+                    <button class="chip" onclick="useExample('Wind speed in Dubai')">Wind in Dubai</button>
+                </div>
+
+                <div class="capabilities-section">
+                    <h6 class="text-muted mb-2">What you can ask:</h6>
+                    <ul class="small text-muted">
+                        <li>Ask about current weather conditions in any city</li>
+                        <li>Get specific details like temperature, humidity, or wind speed</li>
+                        <li>Ask about weather-related advice</li>
+                        <li>Engage in natural conversation about weather</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let ws = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+
+function connectWebSocket() {
+    if (ws !== null && ws.readyState === WebSocket.OPEN) return;
+
+    ws = new WebSocket("ws://" + window.location.host + "/ws");
+    
+    ws.onopen = function() {
+        console.log("WebSocket connected");
+        // Add welcome message only if it's not already there
+        if (!document.querySelector('.welcome-message')) {
+            appendMessage("Assistant", "👋 Hello! I'm your AI Weather Assistant. I can help you with weather information for any city. How may I assist you today?", true);
+        }
+        reconnectAttempts = 0;
+    };
+
+    ws.onclose = function() {
+        console.log("WebSocket disconnected");
+        ws = null;
+        if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            appendMessage("System", "Connection lost. Attempting to reconnect...", true);
+            setTimeout(connectWebSocket, 2000);
+        } else {
+            appendMessage("System", "Could not connect to chat. Please refresh the page.", true);
+        }
+    };
+
+    ws.onerror = function(e) {
+        console.error("WebSocket error:", e);
+        appendMessage("System", "Connection error occurred.", true);
+    };
+
+    ws.onmessage = function(event) {
+        console.log("Received message:", event.data);
+        appendMessage("Assistant", event.data);
+        // Enable input after receiving response
+        enableInput();
+    };
+}
+
+function appendMessage(sender, message, isSystem = false) {
+    let messageDiv = document.createElement("div");
+    messageDiv.className = `message ${sender.toLowerCase()}-message ${isSystem ? 'system-message' : ''}`;
+    
+    let icon = '';
+    if (sender === 'Assistant') {
+        icon = '<i class="bi bi-robot"></i> ';
+    } else if (sender === 'You') {
+        icon = '<i class="bi bi-person"></i> ';
+    }
+    
+    messageDiv.innerHTML = `<span class="sender">${icon}${sender}:</span> ${message}`;
+    
+    let chatMessages = document.getElementById("chat-messages");
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function disableInput() {
+    document.getElementById("chat-input").disabled = true;
+    document.querySelector("button[onclick='sendMessage()']").disabled = true;
+}
+
+function enableInput() {
+    document.getElementById("chat-input").disabled = false;
+    document.querySelector("button[onclick='sendMessage()']").disabled = false;
+}
+
+function sendMessage() {
+    if (ws === null || ws.readyState !== WebSocket.OPEN) {
+        appendMessage("System", "Not connected to chat. Attempting to reconnect...", true);
+        connectWebSocket();
+        return;
+    }
+
+    let chatInput = document.getElementById("chat-input");
+    let message = chatInput.value.trim();
+    
+    if (message) {
+        console.log("Sending message:", message);
+        appendMessage("You", message);
+        ws.send(message);
+        chatInput.value = "";
+        
+        // Disable input while waiting for response
+        disableInput();
+    }
+}
+
+function useExample(text) {
+    document.getElementById("chat-input").value = text;
+    sendMessage();
+}
+
+document.getElementById("chat-input").addEventListener("keypress", function(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// Connect when page loads
+window.addEventListener('load', connectWebSocket);
+</script>
+
+<style>
+.chat-container {
+    height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+.message {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    max-width: 85%;
+    position: relative;
+}
+
+.you-message {
+    margin-left: auto;
+    background-color: #007bff;
+    color: white;
+}
+
+.assistant-message {
+    margin-right: auto;
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+.system-message {
+    background-color: #ffeeba;
+    color: #856404;
+    margin: 0.5rem auto;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.sender {
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.suggestion-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.chip {
+    border: none;
+    background-color: #e9ecef;
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.chip:hover {
+    background-color: #dee2e6;
+}
+
+.capabilities-section {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.capabilities-section ul {
+    padding-left: 1.25rem;
+    margin-bottom: 0;
+}
+
+.bi {
+    margin-right: 0.25rem;
+}
+</style>
+{% endblock %}

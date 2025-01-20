@@ -1,0 +1,62 @@
+<!-- templates/weather.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h1 class="card-title text-center mb-2">Realtime Weather APP</h1>
+        <h5 class="text-center text-muted mb-4">Created by Abdul Qayyum</h5>
+        
+        {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if weather %}
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <tbody>
+                    <tr>
+                        <th scope="row">City</th>
+                        <td>{{ weather.city }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Country</th>
+                        <td>{{ weather.country }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Temperature (°C)</th>
+                        <td>{{ weather.temperature_c }}°C</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Temperature (°F)</th>
+                        <td>{{ weather.temperature_f }}°F</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Condition</th>
+                        <td>{{ weather.condition }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Humidity</th>
+                        <td>{{ weather.humidity }}%</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Wind Speed</th>
+                        <td>{{ weather.wind_kph }} km/h</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Last Updated</th>
+                        <td>{{ weather.last_updated }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div class="text-center mt-4">
+            <a href="/" class="btn btn-primary btn-lg">Search Another City</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
