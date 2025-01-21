@@ -8,6 +8,7 @@ This project implements an AI-powered chatbot integrated with a FastAPI backend,
 - **Weather Queries**: Users can ask for temperature, humidity, wind speed, and more.
 - **FastAPI Backend**: Lightweight and efficient backend with robust API endpoints.
 - **Interactive Interface**: User-friendly web interface built using HTML, CSS, and JavaScript.
+- **Function Handling**: Used function handling by implementing a dynamic `function_map` dictionary that allows flexible, runtime routing of method calls with type-safe, modular execution.
 
 ## Installation
 
