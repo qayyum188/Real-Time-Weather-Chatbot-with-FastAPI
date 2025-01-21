@@ -9,6 +9,8 @@ import os
 import json
 import logging
 from typing import Dict, Optional, List
+from uuid import uuid4
+from db_models import DatabaseManager
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -19,8 +21,9 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-# Initialize FastAPI app
+# Initialize FastAPI app and database
 app = FastAPI(title="Intelligent Weather Chatbot")
+db = DatabaseManager()
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -62,7 +65,7 @@ tools = [
     }
 ]
 
-async def get_weather_data(city: str) -> Optional[Dict]:
+async def get_weather_data(city: str, session_id: str = None) -> Optional[Dict]:
     """Fetch weather data from the WeatherAPI"""
     try:
         async with httpx.AsyncClient() as client:
@@ -72,14 +75,17 @@ async def get_weather_data(city: str) -> Optional[Dict]:
             )
             
             if response.status_code == 200:
-                return response.json()
+                weather_data = response.json()
+                # Store weather data
+                await db.store_weather_data(city, weather_data)
+                return weather_data
             logger.error(f"API error: {response.status_code} - {response.text}")
             return None
     except Exception as e:
         logger.error(f"Error fetching weather data: {e}")
         return None
 
-async def process_message(message: str) -> str:
+async def process_message(message: str, session_id: str) -> str:
     """Process user message using OpenAI function calling"""
     try:
         # Initial chat completion with function calling
@@ -150,14 +156,22 @@ async def process_message(message: str) -> str:
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    logger.info("WebSocket connection established")
+    session_id = str(uuid4())
+    logger.info(f"WebSocket connection established with session_id: {session_id}")
     
     try:
         while True:
             message = await websocket.receive_text()
             logger.info(f"Received message: {message}")
 
-            response = await process_message(message)
+            # Store user message
+            await db.store_message(session_id, "user", message)
+
+            # Process message
+            response = await process_message(message, session_id)
+
+            # Store assistant response
+            await db.store_message(session_id, "assistant", response)
             await websocket.send_text(response)
             
     except WebSocketDisconnect:
